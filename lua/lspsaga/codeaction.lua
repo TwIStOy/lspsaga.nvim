@@ -175,8 +175,9 @@ function act:send_code_action_request(main_buf, options, cb)
     self.enriched_ctx = { bufnr = main_buf, method = 'textDocument/codeAction', params = params }
   end
 
-  lsp.buf_request_all(main_buf, 'textDocument/codeAction', params, function(results)
-    self.pending_request = false
+  return lsp.buf_request_all(main_buf, 'textDocument/codeAction', params, function(results)
+    self.pending_request = nil
+    self.trying_to_do_code_action = 0
     self.action_tuples = {}
 
     for client_id, result in pairs(results) do
@@ -229,20 +230,37 @@ function act:num_shortcut(bufnr)
   end
 end
 
+function act:cancel_pending()
+  if self.pending_request ~= nil then
+    self.pending_request()
+    self.pending_request = nil
+    self.trying_to_do_code_action = 0
+  end
+end
+
 function act:code_action(options)
-  if self.pending_request then
+  if self.pending_request ~= nil then
     vim.notify(
       '[lspsaga.nvim] there is already a code action request please wait',
       vim.log.levels.WARN
     )
-    return
+    if self.trying_to_do_code_action == nil then
+      self.trying_to_do_code_action = 0
+    end
+    self.trying_to_do_code_action = 1
+    if self.trying_to_do_code_action > 3 then
+      self:cancel_pending()
+      self.trying_to_do_code_action = 0
+    else
+      return
+    end
   end
-  self.pending_request = true
   options = options or {}
 
-  self:send_code_action_request(api.nvim_get_current_buf(), options, function()
-    self:action_callback()
-  end)
+  self.pending_request = self:send_code_action_request(
+    api.nvim_get_current_buf(), options, function()
+      self:action_callback()
+    end)
 end
 
 function act:apply_action(action, client, enriched_ctx)
