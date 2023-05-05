@@ -32,6 +32,10 @@ local function open_link()
       end
     end
 
+    if path:find('#') then
+      vim.fn.escape(path, '#')
+    end
+
     local cmd
     if libs.iswin then
       cmd = '!start cmd /cstart /b '
@@ -230,6 +234,7 @@ function hover:do_request(args)
   local params = util.make_position_params()
   local count, total = support_clients()
   if count == 0 and should_error(args) then
+    self.pending_request = false
     vim.notify('[Lspsaga] all server of buffer not support hover request')
     return
   end
@@ -325,7 +330,7 @@ end
 function hover:render_hover_doc(args)
   if not check_parser() then
     vim.notify(
-      '[Lpsaga.nvim] Please install markdown and markdown_inline parser in nvim-treesitter',
+      '[Lspsaga.nvim] Please install markdown and markdown_inline parser in nvim-treesitter',
       vim.log.levels.WARN
     )
     return

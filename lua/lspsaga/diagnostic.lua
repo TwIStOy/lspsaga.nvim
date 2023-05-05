@@ -32,7 +32,7 @@ function diag:get_diagnostic_sign(severity)
   local prefix = 'DiagnosticSign'
   local sign_conf = fn.sign_getdefined(prefix .. type)
   if not sign_conf or vim.tbl_isempty(sign_conf) then
-    return
+    return type:gsub(1, 1)
   end
   local icon = (sign_conf[1] and sign_conf[1].text) and sign_conf[1].text or type:gsub(1, 1)
   return icon
@@ -53,6 +53,10 @@ end
 
 function diag:code_action_cb(hi_name)
   if not self.bufnr or not api.nvim_buf_is_loaded(self.bufnr) then
+    return
+  end
+
+  if not self.action_tuples or next(self.action_tuples) == nil then
     return
   end
 
@@ -311,6 +315,7 @@ function diag:render_diagnostic_window(entry, option)
         start = { entry.lnum + 1, entry.col },
         ['end'] = { entry.lnum + 1, entry.col },
       },
+      silent = true,
     }, function(action_tuples, enriched_ctx)
       self.action_tuples = action_tuples
       self.enriched_ctx = enriched_ctx
